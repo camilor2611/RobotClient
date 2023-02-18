@@ -1,12 +1,11 @@
-from robotclient.flowControl.log import custom_logger
-from .flowControl.controlError import ControlExecutionAsyc
+from .flowControl.controlError import ControlExecutionAsync
+from .flowControl.controlSchema import ControlSchemaAsync
 from .spaces.variables import MemoryVariables
+from .flowControl.log import custom_logger
+from schema import Schema, And, Optional
 import pandas as pd
 import asyncio
 import re
-
-
-# custom_logger = CustomLogger()
 
 
 class TransformationPandasError(Exception):
@@ -22,6 +21,11 @@ class NotDataFrameOrSeries(TransformationPandasError):
     pass
 
 
+class FailedSchema(TransformationPandasError):
+    """"""
+    pass
+
+
 class Transformations():
     def __init__(self):
         self.__variables = MemoryVariables()
@@ -33,7 +37,17 @@ class Transformations():
         else:
             raise NotDataFrameOrSeries(f"{source} is not Dataframe or Series")
 
-    @ControlExecutionAsyc(custom_logger.info)
+    async def __remove_column_to_regex_async(self, df: pd.DataFrame, regex: str):
+        match_columns = [str(column) for column in df.columns if re.search(regex, str(column))]
+        list_remove = list(
+            map(
+                lambda name_column: df.drop(name_column, axis=1, inplace=True),
+                match_columns
+            )
+        )
+        return list_remove
+
+    @ControlExecutionAsync(custom_logger.info)
     async def remove_columns_to_regex_async(self, source: str, list_regex: list, export_key=''):
         """This function deletes column through regex. In case if It were not removed columns
         generate <WARNING> in status_type return
@@ -51,12 +65,16 @@ class Transformations():
         status_type = 'success' if any(result_remove) else 'warning'
         return status_type, df
 
-    async def __remove_column_to_regex_async(self, df: pd.DataFrame, regex: str):
-        match_columns = [str(column) for column in df.columns if re.search(regex, str(column))]
-        list_remove = list(
-            map(
-                lambda name_column: df.drop(name_column, axis=1, inplace=True),
-                match_columns
-            )
-        )
-        return list_remove
+    @ControlExecutionAsync(custom_logger.info)
+    @ControlSchemaAsync(Schema([
+            {   
+                'column': And(str, len),
+                'value': And(str, len),
+                Optional('eval'): bool
+            }
+        ]), "new_columns"
+    )
+    async def add_columns_async(self, source: str, new_columns: list(), export_key=''):
+        df = self.__get_dataframe(source)
+        status_type = 'success'
+        return status_type, df

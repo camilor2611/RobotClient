@@ -1,9 +1,10 @@
+from ..spaces.variables import MemoryVariables
 from datetime import datetime
 from types import MethodType
-from ..spaces.variables import MemoryVariables
+from functools import wraps
 
 
-class ControlExecutionAsyc():
+class ControlExecutionAsync():
     def __init__(self, print_function) -> None:
         self.variables = MemoryVariables()
         self.print_function = print_function
@@ -16,6 +17,7 @@ class ControlExecutionAsyc():
         }
 
     def __call__(self, function_):
+        @wraps(function_)
         async def wrapped(*args, **kwargs):
             try:
                 if not self.variables.get_fatal_error():
@@ -29,7 +31,7 @@ class ControlExecutionAsyc():
                     )
                     wasted_time = wasted_time_datetime.strftime(self.__format_hour)
                     self.print_function(self.data_message_default[status].format(
-                        function_name=function_.__qualname__,
+                        function_name=function_.__name__,
                         wasted_time=wasted_time,
                         now=end_time.strftime(self.__format_date)
                         )
@@ -41,6 +43,6 @@ class ControlExecutionAsyc():
                 self.print_function(f"Error: {str(e)}")
                 self.variables.set_fatal_error(True)
         return wrapped
-        
-    def __get__(self, instance, cls):
+
+    def __get__(self, instance, _):
         return self if instance is None else MethodType(self, instance)

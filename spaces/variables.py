@@ -17,6 +17,7 @@ class ReservedName(MemoryVariablesError):
 
 
 class MemoryVariables(object):
+    """This module is Singleton"""
     __instance = None
     __variables = {
         "fatal_error": False
@@ -28,10 +29,19 @@ class MemoryVariables(object):
             cls.__instance = super(MemoryVariables, cls).__new__(cls, *args, **kwargs)
         return cls.__instance
 
-    def __get_obj_path(self, list_path: list, make_path_recursive=True):
+    def __get_obj_path(self, path_list: list, make_path_recursive=True):
+        """This method searches a path through the argument "path_list" into variables.
+
+        :param path_list: this argument contains all parts of a path.
+        :type path_list: list
+        :param make_path_recursive: if this argument is true create all parts of a path. The default vaule is True.
+        :raises NoExistPath: if there is not exist any path raise this error.
+        :type make_path_recursive: bool, optional
+        :return: a string like that "part_one/part_two".
+        """
         current_path = self.__variables
         current_path_str = ""
-        for path_key in list_path:
+        for path_key in path_list:
             current_path_str = f"{current_path_str}/{path_key}"
             if path_key in current_path:
                 current_path = current_path[path_key]
@@ -43,6 +53,14 @@ class MemoryVariables(object):
         return current_path
 
     def new(self, key: str, value):
+        """This method defines a new variable, if the path does not exist, all parts of the path will be created..
+        besides, if value is a dictionary it could access with path "path_a/key_dict".
+        
+        :param key: the key is ubication where it will be saved the value, this key must be similar to "path_a/path_b".
+        :type key: str
+        :param value: is the value that it is saved in the key.
+        :type key: obj
+        """
         parts_key = key.split("/")
         if parts_key[0] in self.reserved_names:
             raise ReservedName("The first part of path cannot contain reserved names")
@@ -57,7 +75,8 @@ class MemoryVariables(object):
         var = self.__get_obj_path(parts_key, make_path_recursive=False)
         return var
 
-    def get_fatal_error(self,) -> bool:
+    def get_fatal_error(self) -> bool:
+
         return self.__variables['fatal_error']
 
     def set_fatal_error(self, value: bool) -> None:
